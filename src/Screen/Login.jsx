@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { Input, Button, Icon } from 'react-native-elements';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 const validationSchema = Yup.object().shape({
   email: Yup.string().email('Invalid email').required('Email is required'),
@@ -11,53 +12,70 @@ const validationSchema = Yup.object().shape({
 });
 
 const LoginScreen = () => {
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const navigation = useNavigation();
+  const [passwordVisible, setPasswordVisible] = useState(false);
+
+  const handleLogin = async (values) => {
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      const user = JSON.parse(userData);
+
+      if (user && user.email === values.email && user.password === values.password) {
+        // Navigate to Profile screen
+        navigation.navigate('ProfileScreen', { user });
+      } else {
+        ToastAndroid.show('Please login with correct email or password', ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      console.error('Error logging in', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>Welcome Back!</Text>
-      <Image
-        source={require("../../assets/loginF.png")} // Replace with your image URL
-        style={styles.welcomeImage}
-      />
+      <Image source={require("../../assets/loginF.png")} style={styles.welcomeImage} />
       <Formik
         initialValues={{ email: '', password: '' }}
         validationSchema={validationSchema}
-        onSubmit={(values) => {
-          // Handle login logic here
-          console.log(values);
-        }}
+        onSubmit={handleLogin}
       >
         {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
           <View>
-            <Input
-              placeholder="Email"
-              leftIcon={{ type: 'font-awesome', name: 'envelope', color: '#0020C2' }}
-              onChangeText={handleChange('email')}
-              onBlur={handleBlur('email')}
-              value={values.email}
-              errorMessage={touched.email && errors.email ? errors.email : ''}
-            />
-            <Input
-              placeholder="Password"
-              leftIcon={{ type: 'font-awesome', name: 'lock', color: '#0020C2' }}
-              rightIcon={
-                <Icon
-                  name={passwordVisible ? 'eye' : 'eye-slash'}
-                  type='font-awesome'
-                  color='#0020C2'
-                  onPress={() => setPasswordVisible(!passwordVisible)}
-                />
-              }
-              secureTextEntry={!passwordVisible}
-              onChangeText={handleChange('password')}
-              onBlur={handleBlur('password')}
-              value={values.password}
-              errorMessage={touched.password && errors.password ? errors.password : ''}
-            />
-            <Button title="Login" onPress={handleSubmit} buttonStyle={styles.loginButton}
-              titleStyle={styles.loginButtonText}/>
+            <View style={styles.inputContainer}>
+              <Icon name="envelope" size={20} color="#0020C2" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                onChangeText={handleChange('email')}
+                onBlur={handleBlur('email')}
+                value={values.email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            {touched.email && errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+            <View style={styles.inputContainer}>
+              <Icon name="lock" size={20} color="#0020C2" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                secureTextEntry={!passwordVisible}
+                onChangeText={handleChange('password')}
+                onBlur={handleBlur('password')}
+                value={values.password}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setPasswordVisible(!passwordVisible)}>
+                <Icon name={passwordVisible ? 'eye-slash' : 'eye'} size={20} color="#0020C2" style={styles.icon} />
+              </TouchableOpacity>
+            </View>
+            {touched.password && errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+
+            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+              <Text style={styles.buttonText}>Login</Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
               <Text style={styles.linkText}>Forgot Password?</Text>
             </TouchableOpacity>
@@ -89,14 +107,34 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 20,
   },
-  loginButton: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: '#0020C2',
+    marginBottom: 20,
+  },
+  icon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+  },
+  button: {
     backgroundColor: '#0020C2',
     borderRadius: 10,
     paddingVertical: 10,
+    alignItems: 'center',
   },
-  loginButtonText: {
+  buttonText: {
     fontSize: 18,
     color: '#fff',
+  },
+  errorText: {
+    fontSize: 14,
+    color: 'red',
+    marginBottom: 10,
   },
   linkText: {
     color: '#007BFF',
@@ -107,7 +145,7 @@ const styles = StyleSheet.create({
     color: '#007BFF',
     textAlign: 'center',
     marginTop: 25,
-  },
+  }
 });
 
 export default LoginScreen;
